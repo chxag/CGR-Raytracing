@@ -8,10 +8,10 @@ CXXFLAGS = -std=c++11 -Wall -Wextra -I./include
 TARGET = raytracer
 
 # Source files
-SRCS = raytracer.cpp cylinder.cpp sphere.cpp triangle.cpp ray.cpp traceRay.cpp 
+SRCS = raytracer.cpp cylinder.cpp sphere.cpp triangle.cpp ppmWriter.cpp tools.cpp 
 
 # Header files
-HDRS = raytracer.h cylinder.h sphere.h triangle.h ray.h traceRay.h ppmWriter.h vecGeometry.h
+HDRS = cylinder.h sphere.h triangle.h ray.h tools.h ppmWriter.h
 
 # Object files
 OBJS = $(SRCS:.cpp=.o)
