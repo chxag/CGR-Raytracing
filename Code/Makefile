@@ -2,21 +2,24 @@
 CXX = g++
 
 # Compiler flags
-CXXFLAGS = -std=c++11 -Wall -Wextra -I/opt/homebrew/include
+CXXFLAGS = -std=c++17 -Wall -Wextra -I/opt/homebrew/include
+
+# Include directories for headers (if you have headers in 'include' folder)
+INCLUDES = -Iinclude
+
+# Source files
+SRCS = raytracer.cpp tools.cpp sphere.cpp ppmWriter.cpp triangle.cpp cylinder.cpp #Intersection.cpp MathUtils.cpp Phong.cpp
+
+# Header files (add header files if needed for dependencies)
+HDRS = sphere.h tools.h triangle.h cylinder.h
 
 # Target executable
 TARGET = raytracer
 
-# Source files
-SRCS = raytracer.cpp cylinder.cpp sphere.cpp triangle.cpp ppmWriter.cpp tools.cpp 
-
-# Header files
-HDRS = cylinder.h sphere.h triangle.h ray.h tools.h ppmWriter.h
-
-# Object files
+# Object files (replace .cpp with .o)
 OBJS = $(SRCS:.cpp=.o)
 
-# Default target
+# Default target (build the program)
 all: $(TARGET)
 
 # Link object files to create the executable

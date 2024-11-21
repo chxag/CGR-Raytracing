@@ -99,34 +99,32 @@ void Tools::render(PPMWriter& ppmwriter) {
 
             for (const auto& sphere: spheres){
                 float t;
-                if (sphere.intersectSphere(ray, t)){
-                    if (t < closestT){
-                        closestT = t;
-                        intersected = true;
-                        intersected_color = {1.0f, 0.0f, 0.0f};
-                    }
+                if (sphere.intersectSphere(ray, t) && t < closestT){
+                    closestT = t;
+                    intersected = true;
+                    intersected_color = {1.0f, 0.0f, 0.0f};
+                    std::cout << "Sphere intersected at t = " << t << std::endl;
+
                 }
             }
 
             for (const auto& cylinder: cylinders){
                 float t;
-                if (cylinder.intersectCylinder(ray, t)){
-                    if (t < closestT){
-                        closestT = t;
-                        intersected = true;
-                        intersected_color = {1.0f, 0.0f, 0.0f};
-                    }
+                if (cylinder.intersectCylinder(ray, t) && t < closestT){
+                    closestT = t;
+                    intersected = true;
+                    intersected_color = {1.0f, 0.0f, 0.0f};
+                    std::cout << "Cylinder intersected at t = " << t << std::endl;
                 }
             }
 
             for (const auto& triangle: triangles){
                 float t;
-                if (triangle.intersectTriangle(ray, t)){
-                    if (t < closestT){
-                        closestT = t;
-                        intersected = true;
-                        intersected_color = {1.0f, 0.0f, 0.0f};
-                    }
+                if (triangle.intersectTriangle(ray, t) && t < closestT){
+                    closestT = t;
+                    intersected = true;
+                    intersected_color = {1.0f, 0.0f, 0.0f};
+                    std::cout << "Triangle intersected at t = " << t << std::endl;
                 }
             };
 
