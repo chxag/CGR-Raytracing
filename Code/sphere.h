@@ -6,7 +6,7 @@
 
 class Sphere{
     public:
-        Sphere(std::vector<float> center, float radius);
+        Sphere(const std::vector<float> center, float radius);
         bool intersectSphere(const Ray& ray, float& t) const;
     private:
         std::vector<float> center;

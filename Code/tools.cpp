@@ -56,22 +56,21 @@ void Tools::readConfig(const std::string& filename)
 void Tools::render(PPMWriter& ppmwriter) {
 
     std::vector<float> forward = {lookAt[0] - position[0], lookAt[1] - position[1], lookAt[2] - position[2]};
-    std::vector<float> right = {upVector[1] * forward[2] - upVector[2] * forward[1],
-                                upVector[2] * forward[0] - upVector[0] * forward[2],
-                                upVector[0] * forward[1] - upVector[1] * forward[0]};
-    std::vector<float> up = {forward[1] * right[2] - forward[2] * right[1],
-                             forward[2] * right[0] - forward[0] * right[2],
-                             forward[0] * right[1] - forward[1] * right[0]};
-    
     for(float &f : forward)
     {
         f = f / sqrt(forward[0] * forward[0] + forward[1] * forward[1] + forward[2] * forward[2]);
     }
-
+    std::vector<float> right = {upVector[1] * forward[2] - upVector[2] * forward[1],
+                                upVector[2] * forward[0] - upVector[0] * forward[2],
+                                upVector[0] * forward[1] - upVector[1] * forward[0]};
     for(float &r : right)
     {
         r = r / sqrt(right[0] * right[0] + right[1] * right[1] + right[2] * right[2]);
     }
+    std::vector<float> up = {forward[1] * right[2] - forward[2] * right[1],
+                             forward[2] * right[0] - forward[0] * right[2],
+                             forward[0] * right[1] - forward[1] * right[0]};
+    
 
     float aspectRatio = static_cast<float>(width) / height;
     float scale = tan(fov * 0.5 * pi / 180.0f);
