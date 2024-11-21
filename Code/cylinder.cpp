@@ -38,7 +38,7 @@ bool Cylinder::intersectCylinder(const Ray& ray, float& t) const{
     
     bool valid_hit_if = valid_hit((-b - sqrt(discriminant)) / (2.0f * a));
     bool valid_hit_else = valid_hit((-b + sqrt(discriminant)) / (2.0f * a));
-    if (valid_hit_if && (!valid_hit_else || (-b - sqrt(discriminant)) / (2.0f * a) < (-b + sqrt(discriminant)) / (2.0f * a))) {
+    if (valid_hit_if && (!valid_hit_else || ((-b - sqrt(discriminant)) / (2.0f * a)) < ((-b + sqrt(discriminant)) / (2.0f * a)))) {
         t = (-b - sqrt(discriminant)) / (2.0f * a);
         return true;
     } else if (valid_hit_else) {

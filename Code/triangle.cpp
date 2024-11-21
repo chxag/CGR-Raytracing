@@ -18,7 +18,7 @@ bool Triangle::intersectTriangle(const Ray& ray, float& t) const{
 
     float a = e1[0] * p[0] + e1[1] * p[1] + e1[2] * p[2];
 
-    if (std::abs(a) < 1e-8){
+    if (std::fabs(a) < 1e-8){
         return false;
     }
 
