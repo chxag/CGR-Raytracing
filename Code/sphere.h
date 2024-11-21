@@ -2,7 +2,6 @@
 #define SPHERE_H
 
 #include "ray.h"
-#include "raytracer.h"
 #include <vector>
 
 class Sphere{

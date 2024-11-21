@@ -9,10 +9,6 @@ Triangle::Triangle(const std::vector<float>& v0, const std::vector<float>& v1, c
 
 bool Triangle::intersectTriangle(const Ray& ray, float& t) const{
 
-    std::vector<float> v0 = {v0[0], v0[1], v0[2]};
-    std::vector<float> v1 = {v1[0], v1[1], v1[2]};
-    std::vector<float> v2 = {v2[0], v2[1], v2[2]};
-
     std::vector<float> e1 = {v1[0] - v0[0], v1[1] - v0[1],  v1[2] - v0[2]};
     std::vector<float> e2 = {v2[0] - v0[0], v2[1] - v0[1],  v2[2] - v0[2]};
 

@@ -2,7 +2,7 @@
 CXX = g++
 
 # Compiler flags
-CXXFLAGS = -std=c++11 -Wall -Wextra -I./include
+CXXFLAGS = -std=c++11 -Wall -Wextra -I/opt/homebrew/include
 
 # Target executable
 TARGET = raytracer

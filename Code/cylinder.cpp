@@ -11,7 +11,7 @@ Cylinder::Cylinder(const std::vector<float>& center, float radius, const std::ve
 
 bool Cylinder::intersectCylinder(const Ray& ray, float& t) const{
    std::vector<float> oc ={ray.origin[0] - center[0], ray.origin[1] - center[1], ray.origin[2] - center[2]};
-   const float epsilon = 0.0000001;
+   const float epsilon = 1e-6;
 
    float d_perp = ray.direction[0] * axis[0] + ray.direction[1] * axis[1] + ray.direction[2] * axis[2];
    float oc_perp = oc[0] * axis[0] + oc[1] * axis[1] + oc[2] * axis[2];

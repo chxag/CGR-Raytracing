@@ -1,15 +1,19 @@
 #include <iostream>
 #include <cmath>
 #include <fstream>
-#include "json.hpp"
+#include <nlohmann/json.hpp>
 #include <vector>
 #include "tools.h"
+#include <stdexcept>
+#include <limits>
+#include <iostream>
+#include <algorithm>
 
 using json = nlohmann::json;
 
-double pi = 3.14159265358979323846;
+float pi = 3.14159265358979323846;
 
-void Tools::readConfig(const std::string &filename)
+void Tools::readConfig(const std::string& filename)
 {
     std::ifstream file(filename);
     json j;
@@ -25,7 +29,7 @@ void Tools::readConfig(const std::string &filename)
     upVector = j["camera"]["upVector"].get<std::vector<float>>();
     fov = j["camera"]["fov"].get<float>();
     exposure = j["camera"]["exposure"].get<float>();
-    backgroundcolor = j["backgroundcolor"].get<std::vector<float>>();
+    backgroundcolor = j["scene"]["backgroundcolor"].get<std::vector<float>>();
     
     for (const auto& shape : j["scene"]["shapes"]){
         if(shape["type"].get<std::string>() == "sphere") {
@@ -52,21 +56,21 @@ void Tools::readConfig(const std::string &filename)
 void Tools::render(PPMWriter& ppmwriter) {
 
     std::vector<float> forward = {lookAt[0] - position[0], lookAt[1] - position[1], lookAt[2] - position[2]};
-    std::vector<float> right = {forward[1] * upVector[2] - forward[2] * upVector[1],
-                                forward[2] * upVector[0] - forward[0] * upVector[2],
-                                forward[0] * upVector[1] - forward[1] * upVector[0]};
+    std::vector<float> right = {upVector[1] * forward[2] - upVector[2] * forward[1],
+                                upVector[2] * forward[0] - upVector[0] * forward[2],
+                                upVector[0] * forward[1] - upVector[1] * forward[0]};
     std::vector<float> up = {forward[1] * right[2] - forward[2] * right[1],
                              forward[2] * right[0] - forward[0] * right[2],
                              forward[0] * right[1] - forward[1] * right[0]};
     
-    for(float &i : forward)
+    for(float &f : forward)
     {
-        i = i / sqrt(forward[0] * forward[0] + forward[1] * forward[1] + forward[2] * forward[2]);
+        f = f / sqrt(forward[0] * forward[0] + forward[1] * forward[1] + forward[2] * forward[2]);
     }
 
-    for(float &i : right)
+    for(float &r : right)
     {
-        i = i / sqrt(right[0] * right[0] + right[1] * right[1] + right[2] * right[2]);
+        r = r / sqrt(right[0] * right[0] + right[1] * right[1] + right[2] * right[2]);
     }
 
     float aspectRatio = static_cast<float>(width) / height;
@@ -82,16 +86,16 @@ void Tools::render(PPMWriter& ppmwriter) {
                                             right[1] * u + up[1] * v + forward[1],
                                             right[2] * u + up[2] * v + forward[2]};
             float direction_normalized = sqrt(direction[0] * direction[0] + direction[1] * direction[1] + direction[2] * direction[2]);
-            for(float &i : direction)
+            for(float &d : direction)
             {
-                i = i / direction_normalized;
+                d = d / direction_normalized;
             }
 
             Ray ray(position, direction);
 
             float closestT = std::numeric_limits<float>::max();
             bool intersected = false; 
-            std::vector<float> intersected_color = {0.0f, 0.0f, 0.0f};
+            std::vector<float> intersected_color = backgroundcolor;
 
             for (const auto& sphere: spheres){
                 float t;
@@ -132,5 +136,5 @@ void Tools::render(PPMWriter& ppmwriter) {
                 ppmwriter.getPixelData(x, y, {static_cast<unsigned char>(backgroundcolor[0] * 255), static_cast<unsigned char>(backgroundcolor[1] * 255), static_cast<unsigned char>(backgroundcolor[2] * 255)});
             }
         }
-
+    }
 }
