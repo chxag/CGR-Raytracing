@@ -116,7 +116,7 @@ std::vector<float> Tools::calculateBlinnPhong(const std::vector<float> &intersec
 {
     std::vector<float> color = {0.0f, 0.0f, 0.0f};
 
-    float ambient_intensity = 0.5f;
+    float ambient_intensity = 0.4f;
 
     std::vector<float> ambient_light = {ambient_intensity * material.diffuse_color[0],
                                         ambient_intensity * material.diffuse_color[1],
@@ -233,11 +233,25 @@ void Tools::render(PPMWriter &ppmwriter, std::string rendermode)
                         intersected = true;
                         intersectedMaterial = cylinder.material;
                         intersectionPoint = {ray.origin[0] + t * ray.direction[0],
-                                             ray.origin[1] + t * ray.direction[1],
-                                             ray.origin[2] + t * ray.direction[2]};
-                        normal = {intersectionPoint[0] - cylinder.center[0],
-                                  intersectionPoint[1] - cylinder.center[1],
-                                  intersectionPoint[2] - cylinder.center[2]};
+                                            ray.origin[1] + t * ray.direction[1],
+                                            ray.origin[2] + t * ray.direction[2]};
+                        
+                        // Calculate point relative to cylinder center
+                        std::vector<float> pc = {
+                            intersectionPoint[0] - cylinder.center[0],
+                            intersectionPoint[1] - cylinder.center[1],
+                            intersectionPoint[2] - cylinder.center[2]
+                        };
+                        
+                        // Project point onto axis
+                        float dot = pc[0] * cylinder.axis[0] + pc[1] * cylinder.axis[1] + pc[2] * cylinder.axis[2];
+                        
+                        // Calculate normal as point minus its projection on axis
+                        normal = {
+                            pc[0] - dot * cylinder.axis[0],
+                            pc[1] - dot * cylinder.axis[1],
+                            pc[2] - dot * cylinder.axis[2]
+                        };
                         normalize(normal);
                     }
                 }

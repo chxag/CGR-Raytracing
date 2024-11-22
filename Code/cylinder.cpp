@@ -5,7 +5,7 @@
 #include <algorithm>
 
 Cylinder::Cylinder(const std::vector<float> &center, float radius, const std::vector<float> &axis, float height, Material material)
-    : center(center), radius(radius), axis(axis), height(height), material(material){
+    : center(center), radius(radius), axis(axis), height(height*2), material(material){
     float axis_length = sqrt(axis[0] * axis[0] + axis[1] * axis[1] + axis[2] * axis[2]);
     this->axis = {axis[0] / axis_length, axis[1] / axis_length, axis[2] / axis_length};
 
@@ -54,7 +54,7 @@ bool Cylinder::intersectCylinder(const Ray& ray, float& t) const {
             float projection = to_point[0] * axis[0] +
                                to_point[1] * axis[1] +
                                to_point[2] * axis[2];
-            if (projection >= -height && projection <= height && t_candidate < t_min) {
+            if (projection >= -height / 2 && projection <= height / 2 && t_candidate < t_min) {
                 t_min = t_candidate;
             }
         }
