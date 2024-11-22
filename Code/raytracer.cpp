@@ -9,7 +9,7 @@ int main()
     int width = 1200;
     int height = 800;
     std::vector<unsigned char> backgrounddata = {64, 64, 64};
-    PPMWriter ppmwriter(width, height,backgrounddata);
+    PPMWriter ppmwriter(width, height, backgrounddata);
     tools.render(ppmwriter, "phong");
     ppmwriter.writePPM("output.ppm");
     return 0;

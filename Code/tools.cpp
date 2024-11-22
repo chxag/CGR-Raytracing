@@ -116,7 +116,7 @@ std::vector<float> Tools::calculateBlinnPhong(const std::vector<float> &intersec
 {
     std::vector<float> color = {0.0f, 0.0f, 0.0f};
 
-    float ambient_intensity = 0.4f;
+    float ambient_intensity = 0.5f;
 
     std::vector<float> ambient_light = {ambient_intensity * material.diffuse_color[0],
                                         ambient_intensity * material.diffuse_color[1],
