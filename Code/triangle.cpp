@@ -1,11 +1,8 @@
 #include "triangle.h"
 #include <cmath>
 
-Triangle::Triangle(const std::vector<float>& v0, const std::vector<float>& v1, const std::vector<float>& v2){
-    this->v0 = v0;
-    this->v1 = v1;
-    this->v2 = v2;
-}
+Triangle::Triangle(const std::vector<float>& v0, const std::vector<float>& v1, const std::vector<float>& v2, Material material)
+    : v0(v0), v1(v1), v2(v2), material(material) {}
 
 bool Triangle::intersectTriangle(const Ray& ray, float& t) const{
 

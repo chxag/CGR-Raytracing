@@ -7,14 +7,16 @@
 #include "cylinder.h"
 #include "triangle.h"
 #include "ppmWriter.h"
+#include "light.h"
 
 class Tools
 
 {
 public:
     void readConfig(const std::string &filename);
-    void render(PPMWriter& ppmwriter);
+    void render(PPMWriter& ppmwriter, std::string rendermode);
     void normalize(std::vector<float> &vec);
+    std::vector<float> calculateBlinnPhong(const std::vector<float>& intersectionPoint, const std::vector<float> normal, const std::vector<float>viewDir, const Material& material, const std::vector<Light>& lights);
 private:
 
     std::string rendermode;
@@ -32,6 +34,7 @@ private:
     std::vector<Sphere> spheres;
     std::vector<Cylinder> cylinders;
     std::vector<Triangle> triangles;
+    std::vector<Light> lightsources;
 
 
 };

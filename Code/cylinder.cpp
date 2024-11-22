@@ -4,11 +4,8 @@
 #include <limits>
 #include <algorithm>
 
-Cylinder::Cylinder(const std::vector<float> &center, float radius, const std::vector<float> &axis, float height)
-    : center(center), radius(radius), axis(axis), height(height) {
-    // this->center = center;
-    // this->radius = radius;
-    // this->height = height;
+Cylinder::Cylinder(const std::vector<float> &center, float radius, const std::vector<float> &axis, float height, Material material)
+    : center(center), radius(radius), axis(axis), height(height), material(material){
     float axis_length = sqrt(axis[0] * axis[0] + axis[1] * axis[1] + axis[2] * axis[2]);
     this->axis = {axis[0] / axis_length, axis[1] / axis_length, axis[2] / axis_length};
 
@@ -16,7 +13,6 @@ Cylinder::Cylinder(const std::vector<float> &center, float radius, const std::ve
 
 bool Cylinder::intersectCylinder(const Ray &ray, float &t) const
 {
-
     float side_t = std::numeric_limits<float>::max();
     float cap_t = std::numeric_limits<float>::max();
 

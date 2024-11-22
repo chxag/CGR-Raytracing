@@ -3,16 +3,18 @@
 
 #include "ray.h"
 #include <vector>
+#include "material.h"
 
 class Triangle {
     public:
 
-        Triangle(const std::vector<float>& v0, const std::vector<float>& v1, const std::vector<float>& v2);
+        Triangle(const std::vector<float>& v0, const std::vector<float>& v1, const std::vector<float>& v2, Material material);
         bool intersectTriangle(const Ray& ray, float& t) const;
-    
-    private:
         std::vector<float> v0;
         std::vector<float> v1;
         std::vector<float> v2;
+        Material material;
+    
+    private:
 };
 #endif
