@@ -8,5 +8,4 @@ class Ray {
     std::vector<float> direction;
     Ray(std::vector<float>& origin,std::vector<float>& direction)
         : origin(origin), direction(direction) {}
-
 };

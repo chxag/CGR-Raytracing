@@ -14,6 +14,7 @@ class Tools
 public:
     void readConfig(const std::string &filename);
     void render(PPMWriter& ppmwriter);
+    void normalize(std::vector<float> &vec);
 private:
 
     std::string rendermode;

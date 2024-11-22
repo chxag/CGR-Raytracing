@@ -53,25 +53,29 @@ void Tools::readConfig(const std::string& filename)
     }
 };
 
+void Tools::normalize(std::vector<float>& vec){
+    float length = sqrt(vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2]);
+    if (length > 1e-6){
+        for(float &v : vec)
+        {
+            v = v / length;
+        }
+    }
+}
+
 void Tools::render(PPMWriter& ppmwriter) {
 
     std::vector<float> forward = {lookAt[0] - position[0], lookAt[1] - position[1], lookAt[2] - position[2]};
-    for(float &f : forward)
-    {
-        f = f / sqrt(forward[0] * forward[0] + forward[1] * forward[1] + forward[2] * forward[2]);
-    }
+    normalize(forward);
     std::vector<float> right = {upVector[1] * forward[2] - upVector[2] * forward[1],
                                 upVector[2] * forward[0] - upVector[0] * forward[2],
                                 upVector[0] * forward[1] - upVector[1] * forward[0]};
-    for(float &r : right)
-    {
-        r = r / sqrt(right[0] * right[0] + right[1] * right[1] + right[2] * right[2]);
-    }
+    normalize(right);
     std::vector<float> up = {forward[1] * right[2] - forward[2] * right[1],
                              forward[2] * right[0] - forward[0] * right[2],
                              forward[0] * right[1] - forward[1] * right[0]};
     
-
+    normalize(up);
     float aspectRatio = static_cast<float>(width) / height;
     float scale = tan(fov * 0.5 * pi / 180.0f);
 
@@ -84,12 +88,7 @@ void Tools::render(PPMWriter& ppmwriter) {
             std::vector<float> direction = {right[0] * u + up[0] * v + forward[0],
                                             right[1] * u + up[1] * v + forward[1],
                                             right[2] * u + up[2] * v + forward[2]};
-            float direction_normalized = sqrt(direction[0] * direction[0] + direction[1] * direction[1] + direction[2] * direction[2]);
-            for(float &d : direction)
-            {
-                d = d / direction_normalized;
-            }
-
+            normalize(direction);
             Ray ray(position, direction);
 
             float closestT = std::numeric_limits<float>::max();
@@ -102,7 +101,7 @@ void Tools::render(PPMWriter& ppmwriter) {
                     closestT = t;
                     intersected = true;
                     intersected_color = {1.0f, 0.0f, 0.0f};
-                    std::cout << "Sphere intersected at t = " << t << std::endl;
+                    
 
                 }
             }
@@ -113,7 +112,7 @@ void Tools::render(PPMWriter& ppmwriter) {
                     closestT = t;
                     intersected = true;
                     intersected_color = {1.0f, 0.0f, 0.0f};
-                    std::cout << "Cylinder intersected at t = " << t << std::endl;
+                    
                 }
             }
 
@@ -123,7 +122,7 @@ void Tools::render(PPMWriter& ppmwriter) {
                     closestT = t;
                     intersected = true;
                     intersected_color = {1.0f, 0.0f, 0.0f};
-                    std::cout << "Triangle intersected at t = " << t << std::endl;
+                    
                 }
             };
 
