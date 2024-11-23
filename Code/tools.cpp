@@ -13,8 +13,7 @@
 #include "blinn_phong_shader.h"
 #include "vector_utils.h"
 #include "tone_mapping.h"
-
-#define MAX_REFLECTION_DEPTH 3
+#include "shadow.h"
 
 using json = nlohmann::json;
 
@@ -26,6 +25,7 @@ void Tools::readConfig(const std::string &filename)
     json j;
     file >> j;
 
+    nbounces = j["nbounces"];
     rendermode = j["rendermode"];
     camera_type = j["camera"]["type"];
     width = j["camera"]["width"].get<int>();
@@ -59,10 +59,11 @@ void Tools::readConfig(const std::string &filename)
             std::vector<float> diffuse_color = shape["material"]["diffusecolor"].get<std::vector<float>>();
             std::vector<float> specular_color = shape["material"]["specularcolor"].get<std::vector<float>>();
             bool is_reflective = shape["material"]["isreflective"].get<bool>();
+            float reflectivity = shape["material"]["reflectivity"].get<float>();
             bool is_refractive = shape["material"]["isrefractive"].get<bool>();
             float refractive_index = shape["material"]["refractiveindex"].get<float>();
 
-            Material material(ks_coeffcient, kd_coeffcient, specular_exponent, diffuse_color, specular_color, is_reflective, is_refractive, refractive_index);
+            Material material(ks_coeffcient, kd_coeffcient, specular_exponent, diffuse_color, specular_color, is_reflective, reflectivity, is_refractive, refractive_index);
 
             spheres.emplace_back(center, radius, material);
         }
@@ -78,10 +79,11 @@ void Tools::readConfig(const std::string &filename)
             std::vector<float> diffuse_color = shape["material"]["diffusecolor"].get<std::vector<float>>();
             std::vector<float> specular_color = shape["material"]["specularcolor"].get<std::vector<float>>();
             bool is_reflective = shape["material"]["isreflective"].get<bool>();
+            float reflectivity = shape["material"]["reflectivity"].get<float>();
             bool is_refractive = shape["material"]["isrefractive"].get<bool>();
             float refractive_index = shape["material"]["refractiveindex"].get<float>();
 
-            Material material(ks_coeffcient, kd_coeffcient, specular_exponent, diffuse_color, specular_color, is_reflective, is_refractive, refractive_index);
+            Material material(ks_coeffcient, kd_coeffcient, specular_exponent, diffuse_color, specular_color, is_reflective, reflectivity, is_refractive, refractive_index);
 
             cylinders.emplace_back(center, radius, axis, height, material);
         }
@@ -96,15 +98,79 @@ void Tools::readConfig(const std::string &filename)
             std::vector<float> specular_color = shape["material"]["specularcolor"].get<std::vector<float>>();
             std::vector<float> diffuse_color = shape["material"]["diffusecolor"].get<std::vector<float>>();
             bool is_reflective = shape["material"]["isreflective"].get<bool>();
+            float reflectivity = shape["material"]["reflectivity"].get<float>();
             bool is_refractive = shape["material"]["isrefractive"].get<bool>();
             float refractive_index = shape["material"]["refractiveindex"].get<float>();
 
-            Material material(ks_coeffcient, kd_coeffcient, specular_exponent, diffuse_color, specular_color, is_reflective, is_refractive, refractive_index);
+            Material material(ks_coeffcient, kd_coeffcient, specular_exponent, diffuse_color, specular_color, is_reflective, reflectivity, is_refractive, refractive_index);
 
             triangles.emplace_back(v0, v1, v2, material);
         }
     }
 };
+
+std::vector<float> Tools::traceRay(const Ray &ray, int depth, const std::string &rendermode)
+{
+
+    if (depth > nbounces)
+    {
+        return backgroundcolor;
+    }
+
+    std::vector intersection_color = backgroundcolor;
+
+    if (rendermode == "phong")
+    {
+        ShaderResult result = BlinnPhongShader::intersectionTests(ray, spheres, cylinders, triangles, backgroundcolor);
+        intersection_color = result.color;
+        bool intersected = result.intersected;
+        std::vector<float> intersectionPoint = result.intersection_point;
+        Material intersectedMaterial = result.intersected_material;
+        std::vector<float> normal = result.normal;
+
+        if (intersected)
+        {
+            std::vector<float> viewDir = {
+                position[0] - intersectionPoint[0],
+                position[1] - intersectionPoint[1],
+                position[2] - intersectionPoint[2]};
+            normalize(viewDir);
+            intersection_color = BlinnPhongShader::calculateColor(intersectionPoint, normal, viewDir, intersectedMaterial, lightsources, spheres, cylinders, triangles);
+
+            if (intersectedMaterial.is_reflective)
+            {
+                std::vector<float> reflectionDir = reflect(ray.direction, normal);
+                normalize(reflectionDir);
+                std::vector<float> temp = {intersectionPoint[0] + 0.001f * reflectionDir[0], + intersectionPoint[1] + 0.001f * reflectionDir[1],  intersectionPoint[2] + 0.001f * reflectionDir[2]};
+                Ray reflectionRay(temp, reflectionDir);
+
+                std::vector<float> reflectionColor = traceRay(reflectionRay, depth + 1, rendermode);
+
+                for (auto& light  : lightsources){
+
+                    bool inShadow = Shadow::isInShadow(intersectionPoint, light, spheres, cylinders, triangles);
+                    if (inShadow)
+                    {
+                        continue;
+                    }
+                }
+
+                intersection_color[0] = (1 - intersectedMaterial.reflectivity) * intersection_color[0] + intersectedMaterial.reflectivity * reflectionColor[0];
+                intersection_color[1] = (1 - intersectedMaterial.reflectivity) * intersection_color[1] + intersectedMaterial.reflectivity * reflectionColor[1];
+                intersection_color[2] = (1 - intersectedMaterial.reflectivity) * intersection_color[2] + intersectedMaterial.reflectivity * reflectionColor[2];
+                
+            }
+        }
+    }
+
+    if (rendermode == "binary")
+    {
+        ShaderResult result = BinaryShader::calculateColor(ray, spheres, cylinders, triangles, backgroundcolor);
+        intersection_color = result.color;
+    }
+
+    return intersection_color;
+}
 
 void Tools::render(PPMWriter &ppmwriter, std::string rendermode)
 {
@@ -123,9 +189,6 @@ void Tools::render(PPMWriter &ppmwriter, std::string rendermode)
     float aspectRatio = static_cast<float>(width) / height;
     float scale = tan(fov * 0.5 * pi / 180.0f);
 
-    float max_value = 1.0f;
-    //std::vector<std::vector<std::vector<float>>> hdr_colors(height, std::vector<std::vector<float>>(width, std::vector<float>(3, 0.0f)));
-
     for (int y = 0; y < height; ++y)
     {
         for (int x = 0; x < width; ++x)
@@ -139,130 +202,39 @@ void Tools::render(PPMWriter &ppmwriter, std::string rendermode)
             normalize(direction);
             Ray ray(position, direction);
 
-            if (rendermode == "phong")
-            {
-                ShaderResult result = BlinnPhongShader::intersectionTests(ray, spheres, cylinders, triangles, backgroundcolor);
-                std::vector<float> intersection_color = result.color;
-                bool intersected = result.intersected;
-                std::vector<float> intersectionPoint = result.intersection_point;
-                Material intersectedMaterial = result.intersected_material;
-                std::vector<float> normal = result.normal;
+            std::vector<float> intersection_color = traceRay(ray, 0, rendermode);
 
-                if (intersected)
-                {
-                    std::vector<float> viewDir = {
-                        position[0] - intersectionPoint[0],
-                        position[1] - intersectionPoint[1],
-                        position[2] - intersectionPoint[2]};
-                    normalize(viewDir);
-                    intersection_color = BlinnPhongShader::calculateColor(intersectionPoint, normal, viewDir, intersectedMaterial, lightsources, spheres, cylinders, triangles);
-                    //hdr_colors[y][x] = intersection_color;
-                    max_value = std::max(max_value, *std::max_element(intersection_color.begin(), intersection_color.end()));
-                    // #pragma omp parallel for 
-                    // for (int y = 0; y < height; ++y)
-                    // {
-                    //     for (int x = 0; x < width; ++x)
-                    //     {
-                    //         std::vector<float> hdr_color = hdr_colors[y][x];
+            max_value = std::max({max_value, intersection_color[0], intersection_color[1], intersection_color[2]});
 
-                    //         std::vector<float> tone_mapped_color = linearToneMapping(hdr_color, max_value);
-
-                    //         ppmwriter.getPixelData(x, y, {static_cast<unsigned char>(tone_mapped_color[0] * 255), static_cast<unsigned char>(tone_mapped_color[1] * 255), static_cast<unsigned char>(tone_mapped_color[2] * 255)});
-                    //     }
-                    // }
-                    //ppmwriter.getPixelData(x, y, {static_cast<unsigned char>(intersection_color[0] * 255), static_cast<unsigned char>(intersection_color[1] * 255), static_cast<unsigned char>(intersection_color[2] * 255)});
-                }
-                // else
-                // {
-                //     ppmwriter.getPixelData(x, y, {static_cast<unsigned char>(backgroundcolor[0] * 255), static_cast<unsigned char>(backgroundcolor[1] * 255), static_cast<unsigned char>(backgroundcolor[2] * 255)});
-                // }
-            }
-
-            if (rendermode == "binary")
-            {
-                ShaderResult result = BinaryShader::calculateColor(ray, spheres, cylinders, triangles, backgroundcolor);
-                std::vector<float> color = result.color;
-                //bool intersected = result.intersected;
-                //hdr_colors[y][x] = color;
-                max_value = std::max(max_value, *std::max_element(color.begin(), color.end()));
-
-                // if (intersected)
-                // {
-                //     // #pragma omp parallel for 
-                //     // for (int y = 0; y < height; ++y)
-                //     // {
-                //     //     for (int x = 0; x < width; ++x)
-                //     //     {
-                //     //         std::vector<float> hdr_color = hdr_colors[y][x];
-
-                //     //         std::vector<float> tone_mapped_color = linearToneMapping(hdr_color, max_value);
-
-                //     //         ppmwriter.getPixelData(x, y, {static_cast<unsigned char>(tone_mapped_color[0] * 255), static_cast<unsigned char>(tone_mapped_color[1] * 255), static_cast<unsigned char>(tone_mapped_color[2] * 255)});
-                //     //     }
-                //     // }
-                //     //ppmwriter.getPixelData(x, y, {static_cast<unsigned char>(color[0] * 255), static_cast<unsigned char>(color[1] * 255), static_cast<unsigned char>(color[2] * 255)});
-                // }
-                // else
-                // {
-                //     ppmwriter.getPixelData(x, y, {static_cast<unsigned char>(backgroundcolor[0] * 255), static_cast<unsigned char>(backgroundcolor[1] * 255), static_cast<unsigned char>(backgroundcolor[2] * 255)});
-                // }
-            }
-        }
-    }
-
-    for (int y = 0; y < height; ++y)
-    {
-        for (int x = 0; x < width; ++x)
-        {
-            float u = (2 * (x + 0.5f) / width - 1) * aspectRatio * scale;
-            float v = (1 - 2 * (y + 0.5f) / height) * scale;
-
-            std::vector<float> direction = {right[0] * u + up[0] * v + forward[0],
-                                            right[1] * u + up[1] * v + forward[1],
-                                            right[2] * u + up[2] * v + forward[2]};
-            normalize(direction);
-            Ray ray(position, direction);
-
-            std::vector<float> color = backgroundcolor;
-
-            // Phong Shading Mode
-            if (rendermode == "phong")
-            {
-                ShaderResult result = BlinnPhongShader::intersectionTests(ray, spheres, cylinders, triangles, backgroundcolor);
-                bool intersected = result.intersected;
-
-                if (intersected)
-                {
-                    std::vector<float> intersectionPoint = result.intersection_point;
-                    Material intersectedMaterial = result.intersected_material;
-                    std::vector<float> normal = result.normal;
-
-                    std::vector<float> viewDir = {
-                        position[0] - intersectionPoint[0],
-                        position[1] - intersectionPoint[1],
-                        position[2] - intersectionPoint[2]};
-                    normalize(viewDir);
-
-                    color = BlinnPhongShader::calculateColor(intersectionPoint, normal, viewDir, intersectedMaterial, lightsources, spheres, cylinders, triangles);
-                }
-            }
-
-            // Binary Shading Mode
-            if (rendermode == "binary")
-            {
-                ShaderResult result = BinaryShader::calculateColor(ray, spheres, cylinders, triangles, backgroundcolor);
-                color = result.color;
-            }
-
-            // Apply linear tone mapping during the second pass
-            std::vector<float> tone_mapped_color = linearToneMapping(color, max_value);
-
-            // Write the tone-mapped color to the PPM image
             ppmwriter.getPixelData(x, y, {
-                static_cast<unsigned char>(tone_mapped_color[0] * 255),
-                static_cast<unsigned char>(tone_mapped_color[1] * 255),
-                static_cast<unsigned char>(tone_mapped_color[2] * 255)
-            });
+                static_cast<unsigned char>(intersection_color[0] * 255),
+                static_cast<unsigned char>(intersection_color[1] * 255),
+                static_cast<unsigned char>(intersection_color[2] * 255)});
         }
+
+        // for (int y = 0; y < height; ++y)
+        // {
+        //     for (int x = 0; x < width; ++x)
+        //     {
+        //         float u = (2 * (x + 0.5f) / width - 1) * aspectRatio * scale;
+        //         float v = (1 - 2 * (y + 0.5f) / height) * scale;
+
+        //         std::vector<float> direction = {right[0] * u + up[0] * v + forward[0],
+        //                                         right[1] * u + up[1] * v + forward[1],
+        //                                         right[2] * u + up[2] * v + forward[2]};
+        //         normalize(direction);
+        //         Ray ray(position, direction);
+
+        //         std::vector<float> intersection_color = traceRay(ray, 0, rendermode);
+
+        //         std::vector<float> tone_mapped_color = linearToneMapping(intersection_color, max_value);
+
+        //         ppmwriter.getPixelData(x,y, {
+        //             static_cast<unsigned char>(tone_mapped_color[0] * 255),
+        //             static_cast<unsigned char>(tone_mapped_color[1] * 255),
+        //             static_cast<unsigned char>(tone_mapped_color[2] * 255)
+        //         });
+        //     }
+        // }
     }
 }
