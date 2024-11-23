@@ -21,3 +21,15 @@ std::vector<float> reflect(const std::vector<float> &incident, const std::vector
         incident[2] - 2 * dot * normal[2]};
     return reflected;
 }
+
+std::vector<float> refract(const std::vector<float> &incident, const std::vector<float> &normal, float eta_ratio)
+{
+    float cos_theta = -(incident[0] * normal[0] + incident[1] * normal[1] + incident[2] * normal[2]);
+    float k = eta_ratio * eta_ratio * (1.0f - cos_theta * cos_theta);
+    if (k < 0.0f) return {};
+    float sqrt_k = sqrt(k);
+    return {
+        eta_ratio * incident[0] + (eta_ratio * cos_theta - sqrt_k) * normal[0],
+        eta_ratio * incident[1] + (eta_ratio * cos_theta - sqrt_k) * normal[1],
+        eta_ratio * incident[2] + (eta_ratio * cos_theta - sqrt_k) * normal[2]};
+}

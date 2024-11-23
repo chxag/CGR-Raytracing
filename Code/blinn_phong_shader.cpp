@@ -75,6 +75,7 @@ std::vector<float> BlinnPhongShader::calculateColor(const std::vector<float> &in
     color[1] = std::min(color[1], 1.0f);
     color[2] = std::min(color[2], 1.0f);
 
+
     return color;
 };
 

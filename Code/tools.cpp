@@ -109,6 +109,41 @@ void Tools::readConfig(const std::string &filename)
     }
 };
 
+std::vector<float> Tools::calculateReflection(const Ray &ray, const std::vector<float> &intersectionPoint, const std::vector<float> &normal, int depth){
+    std::vector<float> reflectionDir = reflect(ray.direction, normal);
+    normalize(reflectionDir);
+    std::vector<float> temp = {intersectionPoint[0] + 0.001f * reflectionDir[0], +intersectionPoint[1] + 0.001f * reflectionDir[1], intersectionPoint[2] + 0.001f * reflectionDir[2]};
+    Ray reflectionRay(temp, reflectionDir);
+
+    std::vector<float> reflectionColor = traceRay(reflectionRay, depth + 1, rendermode);
+    return reflectionColor;
+};
+
+std::vector<float> Tools::combineColors(const std::vector<float>& phongColor, const std::vector<float>& reflectionColor, const std::vector<float>& refractionColor, const Material& material, float effectiveReflectivity, float transparency) {
+    std::vector<float> finalColor(3);
+
+    float reflectivity = material.is_reflective ? material.reflectivity : 0.0f;
+
+    float refractionFactor = material.is_refractive ? (1.0f - reflectivity) : 0.0f;
+
+    float phongFactor = 1.0f - effectiveReflectivity - transparency;
+    if (phongFactor < 0.0f) {
+        phongFactor = 0.0f;
+    }
+
+    for (int i = 0; i < 3; ++i) {
+        finalColor[i] = phongColor[i] * (1.0f - reflectivity - refractionFactor)
+                        + reflectionColor[i] * reflectivity
+                        + refractionColor[i] * refractionFactor;
+
+        
+        finalColor[i] = std::min(std::max(finalColor[i], 0.0f), 1.0f); 
+    };
+
+    return finalColor;
+}
+
+
 std::vector<float> Tools::traceRay(const Ray &ray, int depth, const std::string &rendermode)
 {
 
@@ -127,7 +162,7 @@ std::vector<float> Tools::traceRay(const Ray &ray, int depth, const std::string 
         std::vector<float> intersectionPoint = result.intersection_point;
         Material intersectedMaterial = result.intersected_material;
         std::vector<float> normal = result.normal;
-
+        
         if (intersected)
         {
             std::vector<float> viewDir = {
@@ -135,18 +170,26 @@ std::vector<float> Tools::traceRay(const Ray &ray, int depth, const std::string 
                 position[1] - intersectionPoint[1],
                 position[2] - intersectionPoint[2]};
             normalize(viewDir);
-            intersection_color = BlinnPhongShader::calculateColor(intersectionPoint, normal, viewDir, intersectedMaterial, lightsources, spheres, cylinders, triangles);
+            float cos_theta = -(ray.direction[0] * normal[0] +
+                                ray.direction[1] * normal[1] +
+                                ray.direction[2] * normal[2]);
+
+            std::vector<float> phong_color = BlinnPhongShader::calculateColor(intersectionPoint, normal, viewDir, intersectedMaterial, lightsources, spheres, cylinders, triangles);
+
+            std::vector<float> reflectionColor = {0.0f, 0.0f, 0.0f};
+            std::vector<float> refractionColor = {0.0f, 0.0f, 0.0f};
 
             if (intersectedMaterial.is_reflective)
             {
-                std::vector<float> reflectionDir = reflect(ray.direction, normal);
-                normalize(reflectionDir);
-                std::vector<float> temp = {intersectionPoint[0] + 0.001f * reflectionDir[0], + intersectionPoint[1] + 0.001f * reflectionDir[1],  intersectionPoint[2] + 0.001f * reflectionDir[2]};
-                Ray reflectionRay(temp, reflectionDir);
+                    std::vector<float> reflectionDir = reflect(ray.direction, normal);
+                    normalize(reflectionDir);
+                    std::vector<float> temp = {intersectionPoint[0] + 0.001f * reflectionDir[0], +intersectionPoint[1] + 0.001f * reflectionDir[1], intersectionPoint[2] + 0.001f * reflectionDir[2]};
+                    Ray reflectionRay(temp, reflectionDir);
 
-                std::vector<float> reflectionColor = traceRay(reflectionRay, depth + 1, rendermode);
+                    reflectionColor = traceRay(reflectionRay, depth + 1, rendermode);
 
-                for (auto& light  : lightsources){
+                for (auto &light : lightsources)
+                {
 
                     bool inShadow = Shadow::isInShadow(intersectionPoint, light, spheres, cylinders, triangles);
                     if (inShadow)
@@ -155,11 +198,45 @@ std::vector<float> Tools::traceRay(const Ray &ray, int depth, const std::string 
                     }
                 }
 
-                intersection_color[0] = (1 - intersectedMaterial.reflectivity) * intersection_color[0] + intersectedMaterial.reflectivity * reflectionColor[0];
-                intersection_color[1] = (1 - intersectedMaterial.reflectivity) * intersection_color[1] + intersectedMaterial.reflectivity * reflectionColor[1];
-                intersection_color[2] = (1 - intersectedMaterial.reflectivity) * intersection_color[2] + intersectedMaterial.reflectivity * reflectionColor[2];
-                
             }
+            if (intersectedMaterial.is_refractive)
+            {
+                float eta_ratio = intersectedMaterial.refractive_index;
+                
+                if (cos_theta < 0.0f)
+                {
+                    normal[0] = -normal[0];
+                    normal[1] = -normal[1];
+                    normal[2] = -normal[2];
+                    eta_ratio = 1.0f / eta_ratio;
+                }
+
+                std::vector<float> refractedDir = refract(ray.direction, normal, eta_ratio);
+
+                if(!refractedDir.empty()){
+                    normalize(refractedDir);
+
+                    std::vector<float> refractionPoint {
+                        intersectionPoint[0] + 0.001f * refractedDir[0],
+                        intersectionPoint[1] + 0.001f * refractedDir[1],
+                        intersectionPoint[2] + 0.001f * refractedDir[2]
+                    };
+
+                    Ray refractionRay(refractionPoint, refractedDir);
+                    refractionColor = traceRay(refractionRay, depth + 1, rendermode);
+                }
+            }
+            float reflectivity = intersectedMaterial.is_reflective ? intersectedMaterial.reflectivity : 0.0f;
+            float transparency = intersectedMaterial.is_refractive ? (1.0f - reflectivity) : 0.0f;
+
+            if (transparency < 0.0f)
+            {
+                transparency = 0.0f;
+            }
+            float fresnel = pow(1.0f - fabs(cos_theta), 5.0f);
+            float effectiveReflectivity = reflectivity * fresnel;
+
+            intersection_color = combineColors(phong_color, reflectionColor, refractionColor, intersectedMaterial, effectiveReflectivity, transparency);
         }
     }
 
@@ -206,10 +283,7 @@ void Tools::render(PPMWriter &ppmwriter, std::string rendermode)
 
             max_value = std::max({max_value, intersection_color[0], intersection_color[1], intersection_color[2]});
 
-            ppmwriter.getPixelData(x, y, {
-                static_cast<unsigned char>(intersection_color[0] * 255),
-                static_cast<unsigned char>(intersection_color[1] * 255),
-                static_cast<unsigned char>(intersection_color[2] * 255)});
+            ppmwriter.getPixelData(x, y, {static_cast<unsigned char>(intersection_color[0] * 255), static_cast<unsigned char>(intersection_color[1] * 255), static_cast<unsigned char>(intersection_color[2] * 255)});
         }
 
         // for (int y = 0; y < height; ++y)
