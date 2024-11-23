@@ -15,7 +15,7 @@ class Tools
 public:
     void readConfig(const std::string &filename);
     void render(PPMWriter& ppmwriter, std::string rendermode);
-    std::vector<float> calculateBlinnPhong(const std::vector<float>& intersectionPoint, const std::vector<float> normal, const std::vector<float>viewDir, const Material& material, const std::vector<Light>& lights);
+    std::vector<float> traceRay(const Ray& ray, int depth, const std::string& rendermode, std::vector<Sphere>& spheres, const std::vector<Cylinder>& cylinders, const std::vector<Triangle>& triangles, const std::vector<Light>& lightsources, const std::vector<float>& backgroundcolor);
 private:
 
     std::string rendermode;
