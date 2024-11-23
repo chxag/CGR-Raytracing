@@ -109,14 +109,40 @@ void Tools::readConfig(const std::string &filename)
     }
 };
 
-std::vector<float> Tools::calculateReflection(const Ray &ray, const std::vector<float> &intersectionPoint, const std::vector<float> &normal, int depth){
+std::vector<float> Tools::handleReflection(const Ray &ray, const std::vector<float> &intersectionPoint, const std::vector<float> &normal, int depth, const std::string &rendermode)
+{
     std::vector<float> reflectionDir = reflect(ray.direction, normal);
     normalize(reflectionDir);
-    std::vector<float> temp = {intersectionPoint[0] + 0.001f * reflectionDir[0], +intersectionPoint[1] + 0.001f * reflectionDir[1], intersectionPoint[2] + 0.001f * reflectionDir[2]};
+    std::vector<float> temp = {intersectionPoint[0] + 0.001f * reflectionDir[0],
+                               intersectionPoint[1] + 0.001f * reflectionDir[1],
+                               intersectionPoint[2] + 0.001f * reflectionDir[2]};
     Ray reflectionRay(temp, reflectionDir);
+    return traceRay(reflectionRay, depth + 1, rendermode);
+};
 
-    std::vector<float> reflectionColor = traceRay(reflectionRay, depth + 1, rendermode);
-    return reflectionColor;
+std::vector<float> Tools::handleRefraction(const Ray &ray, const std::vector<float> &intersectionPoint, std::vector<float> &normal, const Material &material, float cos_theta, int depth, const std::string &rendermode)
+{
+    float eta_ratio = material.refractive_index;
+    if (cos_theta < 0.0f)
+    {
+        normal[0] = -normal[0];
+        normal[1] = -normal[1];
+        normal[2] = -normal[2];
+        eta_ratio = 1.0f / eta_ratio;
+    }
+
+    std::vector<float> refractedDir = refract(ray.direction, normal, eta_ratio);
+    if (!refractedDir.empty())
+    {
+        normalize(refractedDir);
+        std::vector<float> refractionPoint{
+            intersectionPoint[0] + 0.001f * refractedDir[0],
+            intersectionPoint[1] + 0.001f * refractedDir[1],
+            intersectionPoint[2] + 0.001f * refractedDir[2]};
+        Ray refractionRay(refractionPoint, refractedDir);
+        return traceRay(refractionRay, depth + 1, rendermode);
+    }
+    return {0.0f, 0.0f, 0.0f};
 };
 
 std::vector<float> Tools::combineColors(const std::vector<float>& phongColor, const std::vector<float>& reflectionColor, const std::vector<float>& refractionColor, const Material& material, float effectiveReflectivity, float transparency) {
@@ -181,58 +207,14 @@ std::vector<float> Tools::traceRay(const Ray &ray, int depth, const std::string 
 
             if (intersectedMaterial.is_reflective)
             {
-                    std::vector<float> reflectionDir = reflect(ray.direction, normal);
-                    normalize(reflectionDir);
-                    std::vector<float> temp = {intersectionPoint[0] + 0.001f * reflectionDir[0], +intersectionPoint[1] + 0.001f * reflectionDir[1], intersectionPoint[2] + 0.001f * reflectionDir[2]};
-                    Ray reflectionRay(temp, reflectionDir);
-
-                    reflectionColor = traceRay(reflectionRay, depth + 1, rendermode);
-
-                for (auto &light : lightsources)
-                {
-
-                    bool inShadow = Shadow::isInShadow(intersectionPoint, light, spheres, cylinders, triangles);
-                    if (inShadow)
-                    {
-                        continue;
-                    }
-                }
-
+                reflectionColor = handleReflection(ray, intersectionPoint, normal, depth, rendermode);
             }
             if (intersectedMaterial.is_refractive)
             {
-                float eta_ratio = intersectedMaterial.refractive_index;
-                
-                if (cos_theta < 0.0f)
-                {
-                    normal[0] = -normal[0];
-                    normal[1] = -normal[1];
-                    normal[2] = -normal[2];
-                    eta_ratio = 1.0f / eta_ratio;
-                }
-
-                std::vector<float> refractedDir = refract(ray.direction, normal, eta_ratio);
-
-                if(!refractedDir.empty()){
-                    normalize(refractedDir);
-
-                    std::vector<float> refractionPoint {
-                        intersectionPoint[0] + 0.001f * refractedDir[0],
-                        intersectionPoint[1] + 0.001f * refractedDir[1],
-                        intersectionPoint[2] + 0.001f * refractedDir[2]
-                    };
-
-                    Ray refractionRay(refractionPoint, refractedDir);
-                    refractionColor = traceRay(refractionRay, depth + 1, rendermode);
-                }
+                refractionColor = handleRefraction(ray, intersectionPoint, normal, intersectedMaterial, cos_theta, depth, rendermode);
             }
             float reflectivity = intersectedMaterial.is_reflective ? intersectedMaterial.reflectivity : 0.0f;
             float transparency = intersectedMaterial.is_refractive ? (1.0f - reflectivity) : 0.0f;
-
-            if (transparency < 0.0f)
-            {
-                transparency = 0.0f;
-            }
             float fresnel = pow(1.0f - fabs(cos_theta), 5.0f);
             float effectiveReflectivity = reflectivity * fresnel;
 

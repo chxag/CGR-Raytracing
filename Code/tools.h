@@ -16,7 +16,8 @@ public:
     void readConfig(const std::string &filename);
     void render(PPMWriter& ppmwriter, std::string rendermode);
     std::vector<float> traceRay(const Ray& ray, int depth, const std::string& rendermode);
-    std::vector<float> calculateReflection(const Ray& ray, const std::vector<float>& intersectionPoint, const std::vector<float>& normal, int depth);
+    std::vector<float> handleReflection(const Ray &ray, const std::vector<float> &intersectionPoint, const std::vector<float> &normal, int depth, const std::string &rendermode);
+    std::vector<float> handleRefraction(const Ray &ray, const std::vector<float> &intersectionPoint, std::vector<float> &normal, const Material &material, float cos_theta, int depth, const std::string &rendermode);
     std::vector<float> combineColors(const std::vector<float>& phongColor, const std::vector<float>& reflectionColor, const std::vector<float>& refractionColor, const Material& material, const float effectiveReflectivity, float transparency);
 
 private:
